@@ -2,6 +2,10 @@ FROM  php:8.1-fpm
 
 WORKDIR /convertedin
 
+ADD . .
+
+#laravel required env file for deploying
+COPY .env.example .env
 
 RUN apt-get update && apt-get install -y mariadb-server \
 nano \
@@ -41,29 +45,29 @@ COPY ./app.conf /etc/nginx/sites-enabled/default
 
 RUN apt-get clean
 
-#laravel required env file for deploying
-COPY .env.example .env
+
 
 # shell script to start nginx web server
-COPY /scripts/cmd.sh /usr/bin/
+COPY /scripts/cmd.sh /usr/local/bin/cmd.sh
+
 
 # install laravel dependencies and packages via composer
 RUN composer install --no-interaction --no-scripts --no-progress
 
 # copy all installed configuration inside Container image
-ADD . .
 
 # fix 301 forbidden permission to laravel storage and caches for read and write
 RUN  chgrp -R www-data storage bootstrap/cache &&  chmod -R ug+rwx storage bootstrap/cache
+RUN chmod -R 775 storage bootstrap/cache && chmod 777 -R storage bootstrap/cache
 # make shell script (cmd.sh) excutable
-RUN chmod 777 /usr/bin/cmd.sh
+RUN chmod 777 /usr/local/bin/cmd.sh && chmod +x /usr/local/bin/cmd.sh
 
 # generates new key for laravel env file
-RUN php artisan key:generate
-RUN php artisan migrate --seed
-RUN php artisan queue:work
-RUN php artisan test
-RUN bash -c "/usr/bin/cmd.sh"
+
+EXPOSE 8888
+
+# Run Laravel commands script
+CMD ["/usr/local/bin/cmd.sh"]
 
 
 
